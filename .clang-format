@@ -48,7 +48,7 @@ IndentWrappedFunctionNames: false
 KeepEmptyLinesAtTheStartOfBlocks: true
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
-PointerAlignment: Right
+PointerAlignment: Left
 RawStringFormats:
   - Language:        Cpp
     Delimiters:
