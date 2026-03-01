@@ -4,4 +4,6 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="HelloWorld/HelloWorld.vcxproj" Id="3b5e4380-c6ab-42fa-91cb-905ec8ddd4a8" />
+  <Project Path="Memory/VirtualAlloc/VirtualAlloc.vcxproj" Id="63057cec-7cdf-4162-a8df-120473cefed7" />
+  <Project Path="Process/CreateProcess/CreateProcess.vcxproj" Id="f72e85d4-98c5-4bec-9221-5ac3950124d0" />
 </Solution>
