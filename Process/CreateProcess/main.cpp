@@ -5,19 +5,29 @@
 
 #define TERMINATE_TIME_LIMIT_MS 10000
 
-[[noreturn]] void HandleErrorAndFailW(const wchar_t* pwszMessage)
+[[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
 {
-    DWORD dwLastError = GetLastError();
-    fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwLastError);
+    LPWSTR pwszSysMsg = nullptr;
+
+    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+                   dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
+
+    if (pwszSysMsg == nullptr)
+    {
+        fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
+    }
+    else
+    {
+        fwprintf(stderr, L"%ls: %lu - %ls", pwszMessage, dwErrorCode, pwszSysMsg);
+        LocalFree(pwszSysMsg);
+    }
 
     if (IsDebuggerPresent())
     {
         __debugbreak();
     }
-    else
-    {
-        __fastfail(FAST_FAIL_FATAL_APP_EXIT);
-    }
+
+    ExitProcess(dwErrorCode);
 }
 
 void RunChildRoutine(void)
