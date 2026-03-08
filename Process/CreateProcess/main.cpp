@@ -49,7 +49,7 @@ int wmain(void)
     DWORD dwRet = GetModuleFileNameW(NULL, exePath, MAX_PATH);
     if (dwRet == 0 || dwRet == MAX_PATH)
     {
-        HandleErrorAndFailW(L"Failed to get module file name");
+        HandleErrorAndFailW(L"Failed to get module file name", GetLastError());
     }
 
     STARTUPINFOW si = {sizeof(si)};
@@ -68,16 +68,16 @@ int wmain(void)
 
         if (!CloseHandle(pi.hThread))
         {
-            HandleErrorAndFailW(L"Failed to close child thread handle");
+            HandleErrorAndFailW(L"Failed to close child thread handle", GetLastError());
         }
         if (!CloseHandle(pi.hProcess))
         {
-            HandleErrorAndFailW(L"Failed to close child process handle");
+            HandleErrorAndFailW(L"Failed to close child process handle", GetLastError());
         }
     }
     else
     {
-        HandleErrorAndFailW(L"Failed to create child process");
+        HandleErrorAndFailW(L"Failed to create child process", GetLastError());
     }
 
     wprintf(L"[Parent] Terminating... Child will exit in 10s.\n");

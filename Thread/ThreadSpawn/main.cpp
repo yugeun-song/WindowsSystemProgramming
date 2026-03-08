@@ -81,13 +81,13 @@ void PrintStackTrace(LPCSTR szThreadLabel)
         DWORD64 dw64Displacement = 0;
         if (SymFromAddr(hProcess, (DWORD64)pStack[i], &dw64Displacement, pSymbol))
         {
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[%02u] %-30s (0x%llX)\n", i + 1, pSymbol->Name,
+            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] %-30s (0x%llX)\n", i + 1, pSymbol->Name,
                                 pSymbol->Address);
         }
         else
         {
             DWORD dwError = GetLastError();
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[%02u] Unknown Symbol (0x%p) - Error: %lu\n", i + 1,
+            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] Unknown Symbol (0x%p) - Error: %lu\n", i + 1,
                                 pStack[i], dwError);
         }
 
