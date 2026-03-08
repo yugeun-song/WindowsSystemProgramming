@@ -7,12 +7,12 @@
 
 [[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
 {
-    LPWSTR pwszSysMsg = nullptr;
+    LPWSTR pwszSysMsg = NULL;
 
     FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
                    dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
 
-    if (pwszSysMsg == nullptr)
+    if (pwszSysMsg == NULL)
     {
         fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
     }
@@ -53,14 +53,14 @@ int main(void)
     PrintMemoryStats("Initial State      ");
 
     LPVOID lpvReservedArea = VirtualAlloc(NULL, cbReserveSize, MEM_RESERVE, PAGE_NOACCESS);
-    if (lpvReservedArea == nullptr)
+    if (lpvReservedArea == NULL)
     {
         HandleErrorAndFailW(L"Failed to reserve memory", GetLastError());
     }
     PrintMemoryStats("After MEM_RESERVE  ");
 
     LPVOID lpvCommittedArea = VirtualAlloc(lpvReservedArea, cbActualAvailableSize, MEM_COMMIT, PAGE_READWRITE);
-    if (lpvCommittedArea == nullptr)
+    if (lpvCommittedArea == NULL)
     {
         DWORD dwCommitError = GetLastError();
         if (!VirtualFree(lpvReservedArea, 0, MEM_RELEASE))
@@ -85,7 +85,7 @@ int main(void)
     }
     PrintMemoryStats("After MEM_RELEASE  ");
 
-    lpvReservedArea = nullptr;
-    lpvCommittedArea = nullptr;
+    lpvReservedArea = NULL;
+    lpvCommittedArea = NULL;
     return 0;
 }

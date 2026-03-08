@@ -7,12 +7,12 @@
 
 [[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
 {
-    LPWSTR pwszSysMsg = nullptr;
+    LPWSTR pwszSysMsg = NULL;
 
     FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
                    dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
 
-    if (pwszSysMsg == nullptr)
+    if (pwszSysMsg == NULL)
     {
         fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
     }
@@ -36,7 +36,7 @@ void RunChildRoutine(void)
     Sleep(TERMINATE_TIME_LIMIT_MS);
 }
 
-int wmain(void)
+int main(void)
 {
     wchar_t* cmdLine = GetCommandLineW();
     if (cmdLine != NULL && wcsstr(cmdLine, L"--child-mode") != NULL)

@@ -9,12 +9,12 @@ CRITICAL_SECTION g_criticalSection;
 
 [[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
 {
-    LPWSTR pwszSysMsg = nullptr;
+    LPWSTR pwszSysMsg = NULL;
 
     FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
                    dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
 
-    if (pwszSysMsg == nullptr)
+    if (pwszSysMsg == NULL)
     {
         fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
     }
@@ -39,7 +39,7 @@ void PrintStackTrace(LPCSTR szThreadLabel)
     USHORT usFrames = CaptureStackBackTrace(0, 64, pStack, NULL);
 
     SYMBOL_INFO* pSymbol = (SYMBOL_INFO*)calloc(1, sizeof(SYMBOL_INFO) + 256);
-    if (pSymbol == nullptr)
+    if (pSymbol == NULL)
     {
         fwprintf(stderr, L"calloc failed for SYMBOL_INFO in PrintStackTrace\n");
         return;
@@ -50,7 +50,7 @@ void PrintStackTrace(LPCSTR szThreadLabel)
 
     SIZE_T cbMaxOutput = 32768;
     char* pszOutput = (char*)calloc(1, cbMaxOutput);
-    if (pszOutput == nullptr)
+    if (pszOutput == NULL)
     {
         fwprintf(stderr, L"calloc failed for Output Buffer in PrintStackTrace\n");
         free(pSymbol);
@@ -73,7 +73,7 @@ void PrintStackTrace(LPCSTR szThreadLabel)
 
     for (USHORT i = 0; i < usFrames; ++i)
     {
-        if (pStack[i] == nullptr || cbRemaining == 0)
+        if (pStack[i] == NULL || cbRemaining == 0)
         {
             continue;
         }
@@ -112,10 +112,10 @@ void PrintStackTrace(LPCSTR szThreadLabel)
     printf("%s", pszOutput);
 
     free(pszOutput);
-    pszOutput = nullptr;
+    pszOutput = NULL;
 
     free(pSymbol);
-    pSymbol = nullptr;
+    pSymbol = NULL;
 }
 
 DWORD WINAPI Win32Worker(LPVOID lpParam)
@@ -125,7 +125,7 @@ DWORD WINAPI Win32Worker(LPVOID lpParam)
     return dwThreadExitCode;
 }
 
-UINT __stdcall CrtWorker(PVOID pParam)
+UINT __stdcall RunThread(PVOID pParam)
 {
     UINT dwThreadExitCode = 27;
     PrintStackTrace("CrtWorker (_beginthreadex)");
@@ -142,18 +142,18 @@ int main(void)
         HandleErrorAndFailW(L"SymInitialize failed", GetLastError());
     }
 
-    HANDLE hThreads[2] = { nullptr, nullptr };
+    HANDLE hThreads[2] = { NULL, NULL };
     DWORD dwExitCodes[2] = { 0, 0 };
     LPCWSTR pwszThreadNames[2] = { L"Win32 Thread", L"CRT Thread" };
 
     hThreads[0] = CreateThread(NULL, 0, Win32Worker, NULL, 0, NULL);
-    if (hThreads[0] == nullptr)
+    if (hThreads[0] == NULL)
     {
         HandleErrorAndFailW(L"CreateThread failed", GetLastError());
     }
 
-    hThreads[1] = (HANDLE)_beginthreadex(NULL, 0, CrtWorker, NULL, 0, NULL);
-    if (hThreads[1] == nullptr)
+    hThreads[1] = (HANDLE)_beginthreadex(NULL, 0, RunThread, NULL, 0, NULL);
+    if (hThreads[1] == NULL)
     {
         ULONG nDosErrno = 0;
         _get_doserrno(&nDosErrno);
@@ -190,13 +190,13 @@ int main(void)
     {
         fwprintf(stderr, L"CloseHandle failed for Win32 thread: %lu\n", GetLastError());
     }
-    hThreads[0] = nullptr;
+    hThreads[0] = NULL;
 
     if (!CloseHandle(hThreads[1]))
     {
         fwprintf(stderr, L"CloseHandle failed for CRT thread: %lu\n", GetLastError());
     }
-    hThreads[1] = nullptr;
+    hThreads[1] = NULL;
 
     SymCleanup(GetCurrentProcess());
 
