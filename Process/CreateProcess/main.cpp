@@ -1,39 +1,14 @@
+#include <windows.h>
 #include <intrin.h>
 #include <stdio.h>
 #include <wchar.h>
-#include <windows.h>
 
-#define TERMINATE_TIME_LIMIT_MS 10000
-
-[[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
-{
-    LPWSTR pwszSysMsg = NULL;
-
-    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-                   dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
-
-    if (pwszSysMsg == NULL)
-    {
-        fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
-    }
-    else
-    {
-        fwprintf(stderr, L"%ls: %lu - %ls", pwszMessage, dwErrorCode, pwszSysMsg);
-        LocalFree(pwszSysMsg);
-    }
-
-    if (IsDebuggerPresent())
-    {
-        __debugbreak();
-    }
-
-    ExitProcess(dwErrorCode);
-}
+#include "ErrorHelper.h"
 
 void RunChildRoutine(void)
 {
     wprintf(L"[Child] Process terminating in 10s. PID: %lu\n", GetCurrentProcessId());
-    Sleep(TERMINATE_TIME_LIMIT_MS);
+    Sleep(10000);
 }
 
 int main(void)
@@ -49,11 +24,11 @@ int main(void)
     DWORD dwRet = GetModuleFileNameW(NULL, exePath, MAX_PATH);
     if (dwRet == 0 || dwRet == MAX_PATH)
     {
-        HandleErrorAndFailW(L"Failed to get module file name", GetLastError());
+        HandleErrorAndFailW(L"Failed to get module file name", GetLastError(), FALSE);
     }
 
-    STARTUPINFOW si = {sizeof(si)};
-    PROCESS_INFORMATION pi = {0};
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi = { 0 };
     wchar_t newCmdLine[MAX_PATH * 2];
 
     if (swprintf_s(newCmdLine, ARRAYSIZE(newCmdLine), L"\"%s\" --child-mode", exePath) < 0)
@@ -68,16 +43,16 @@ int main(void)
 
         if (!CloseHandle(pi.hThread))
         {
-            HandleErrorAndFailW(L"Failed to close child thread handle", GetLastError());
+            HandleErrorAndFailW(L"Failed to close child thread handle", GetLastError(), FALSE);
         }
         if (!CloseHandle(pi.hProcess))
         {
-            HandleErrorAndFailW(L"Failed to close child process handle", GetLastError());
+            HandleErrorAndFailW(L"Failed to close child process handle", GetLastError(), FALSE);
         }
     }
     else
     {
-        HandleErrorAndFailW(L"Failed to create child process", GetLastError());
+        HandleErrorAndFailW(L"Failed to create child process", GetLastError(), FALSE);
     }
 
     wprintf(L"[Parent] Terminating... Child will exit in 10s.\n");

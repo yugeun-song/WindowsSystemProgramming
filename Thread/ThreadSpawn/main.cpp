@@ -3,34 +3,11 @@
 #include <process.h>
 #include <stdio.h>
 
+#include "ErrorHelper.h"
+
 #pragma comment(lib, "Dbghelp.lib")
 
-CRITICAL_SECTION g_criticalSection;
-
-[[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
-{
-    LPWSTR pwszSysMsg = NULL;
-
-    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-                   dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
-
-    if (pwszSysMsg == NULL)
-    {
-        fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
-    }
-    else
-    {
-        fwprintf(stderr, L"%ls: %lu - %ls", pwszMessage, dwErrorCode, pwszSysMsg);
-        LocalFree(pwszSysMsg);
-    }
-
-    if (IsDebuggerPresent())
-    {
-        __debugbreak();
-    }
-
-    ExitProcess(dwErrorCode);
-}
+CRITICAL_SECTION gCriticalSection;
 
 void PrintStackTrace(LPCSTR szThreadLabel)
 {
@@ -61,15 +38,15 @@ void PrintStackTrace(LPCSTR szThreadLabel)
     SIZE_T cbRemaining = cbMaxOutput;
     SIZE_T cbWrittenCount = 0;
 
-    cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "\n--- Stack Trace: %s (TID: %lu) ---\n", szThreadLabel,
-                        GetCurrentThreadId());
+    cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "\n--- Stack Trace: %s (TID: %lu) ---\n",
+                              szThreadLabel, GetCurrentThreadId());
     if (cbWrittenCount > 0 && cbWrittenCount < cbRemaining)
     {
         cbOffset += cbWrittenCount;
         cbRemaining -= cbWrittenCount;
     }
 
-    EnterCriticalSection(&g_criticalSection);
+    EnterCriticalSection(&gCriticalSection);
 
     for (USHORT i = 0; i < usFrames; ++i)
     {
@@ -81,14 +58,14 @@ void PrintStackTrace(LPCSTR szThreadLabel)
         DWORD64 dw64Displacement = 0;
         if (SymFromAddr(hProcess, (DWORD64)pStack[i], &dw64Displacement, pSymbol))
         {
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] %-30s (0x%llX)\n", i + 1, pSymbol->Name,
-                                pSymbol->Address);
+            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] %-30s (0x%llX)\n", i + 1,
+                                      pSymbol->Name, pSymbol->Address);
         }
         else
         {
             DWORD dwError = GetLastError();
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] Unknown Symbol (0x%p) - Error: %lu\n", i + 1,
-                                pStack[i], dwError);
+            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] Unknown Symbol (0x%p) - Error: %lu\n",
+                                      i + 1, pStack[i], dwError);
         }
 
         if (cbWrittenCount > 0 && cbWrittenCount < cbRemaining)
@@ -102,11 +79,11 @@ void PrintStackTrace(LPCSTR szThreadLabel)
         }
     }
 
-    LeaveCriticalSection(&g_criticalSection);
+    LeaveCriticalSection(&gCriticalSection);
 
     if (cbRemaining > 0)
     {
-        snprintf(pszOutput + cbOffset, cbRemaining, "--------------------------------------------------\n");
+        snprintf(pszOutput + cbOffset, cbRemaining, "------------------------------------------------------------\n");
     }
 
     printf("%s", pszOutput);
@@ -134,12 +111,12 @@ UINT __stdcall RunThread(PVOID pParam)
 
 int main(void)
 {
-    InitializeCriticalSection(&g_criticalSection);
+    InitializeCriticalSection(&gCriticalSection);
 
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     if (!SymInitialize(GetCurrentProcess(), NULL, TRUE))
     {
-        HandleErrorAndFailW(L"SymInitialize failed", GetLastError());
+        HandleErrorAndFailW(L"SymInitialize failed", GetLastError(), FALSE);
     }
 
     HANDLE hThreads[2] = { NULL, NULL };
@@ -149,7 +126,7 @@ int main(void)
     hThreads[0] = CreateThread(NULL, 0, Win32Worker, NULL, 0, NULL);
     if (hThreads[0] == NULL)
     {
-        HandleErrorAndFailW(L"CreateThread failed", GetLastError());
+        HandleErrorAndFailW(L"CreateThread failed", GetLastError(), FALSE);
     }
 
     hThreads[1] = (HANDLE)_beginthreadex(NULL, 0, RunThread, NULL, 0, NULL);
@@ -157,7 +134,7 @@ int main(void)
     {
         ULONG nDosErrno = 0;
         _get_doserrno(&nDosErrno);
-        HandleErrorAndFailW(L"_beginthreadex failed", (DWORD)nDosErrno);
+        HandleErrorAndFailW(L"_beginthreadex failed", (DWORD)nDosErrno, TRUE);
     }
 
     for (SIZE_T i = 0; i < 2; ++i)
@@ -167,13 +144,13 @@ int main(void)
         if (dwWaitResult == WAIT_FAILED)
         {
             fwprintf(stderr, L"Wait failed for: %ls\n", pwszThreadNames[i]);
-            HandleErrorAndFailW(L"WaitForSingleObject failed", GetLastError());
+            HandleErrorAndFailW(L"WaitForSingleObject failed", GetLastError(), FALSE);
         }
 
         if (!GetExitCodeThread(hThreads[i], &dwExitCodes[i]))
         {
             fwprintf(stderr, L"Failed to get exit code for: %ls\n", pwszThreadNames[i]);
-            HandleErrorAndFailW(L"GetExitCodeThread failed", GetLastError());
+            HandleErrorAndFailW(L"GetExitCodeThread failed", GetLastError(), FALSE);
         }
     }
 
@@ -190,17 +167,17 @@ int main(void)
     {
         fwprintf(stderr, L"CloseHandle failed for Win32 thread: %lu\n", GetLastError());
     }
-    hThreads[0] = NULL;
+    hThreads[0] = INVALID_HANDLE_VALUE;
 
     if (!CloseHandle(hThreads[1]))
     {
         fwprintf(stderr, L"CloseHandle failed for CRT thread: %lu\n", GetLastError());
     }
-    hThreads[1] = NULL;
+    hThreads[1] = INVALID_HANDLE_VALUE;
 
     SymCleanup(GetCurrentProcess());
 
-    DeleteCriticalSection(&g_criticalSection);
+    DeleteCriticalSection(&gCriticalSection);
 
     return 0;
 }

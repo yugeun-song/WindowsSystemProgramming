@@ -3,39 +3,16 @@
 #include <psapi.h>
 #include <stdio.h>
 
+#include "ErrorHelper.h"
+
 #pragma comment(lib, "psapi.lib")
-
-[[noreturn]] void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode)
-{
-    LPWSTR pwszSysMsg = NULL;
-
-    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-                   dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&pwszSysMsg, 0, NULL);
-
-    if (pwszSysMsg == NULL)
-    {
-        fwprintf(stderr, L"%ls: %lu\n", pwszMessage, dwErrorCode);
-    }
-    else
-    {
-        fwprintf(stderr, L"%ls: %lu - %ls", pwszMessage, dwErrorCode, pwszSysMsg);
-        LocalFree(pwszSysMsg);
-    }
-
-    if (IsDebuggerPresent())
-    {
-        __debugbreak();
-    }
-
-    ExitProcess(dwErrorCode);
-}
 
 void PrintMemoryStats(const char* pszMessage)
 {
     PROCESS_MEMORY_COUNTERS pmc;
     if (!GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
     {
-        HandleErrorAndFailW(L"Failed to get process memory information", GetLastError());
+        HandleErrorAndFailW(L"Failed to get process memory information", GetLastError(), FALSE);
     }
 
     printf("%s: %.4f MB\n", pszMessage, (double)pmc.WorkingSetSize / (1024 * 1024));
@@ -55,7 +32,7 @@ int main(void)
     LPVOID lpvReservedArea = VirtualAlloc(NULL, cbReserveSize, MEM_RESERVE, PAGE_NOACCESS);
     if (lpvReservedArea == NULL)
     {
-        HandleErrorAndFailW(L"Failed to reserve memory", GetLastError());
+        HandleErrorAndFailW(L"Failed to reserve memory", GetLastError(), FALSE);
     }
     PrintMemoryStats("After MEM_RESERVE  ");
 
@@ -65,10 +42,10 @@ int main(void)
         DWORD dwCommitError = GetLastError();
         if (!VirtualFree(lpvReservedArea, 0, MEM_RELEASE))
         {
-            HandleErrorAndFailW(L"Critical failure during handling commit error", GetLastError());
+            HandleErrorAndFailW(L"Critical failure during handling commit error", GetLastError(), FALSE);
         }
         SetLastError(dwCommitError);
-        HandleErrorAndFailW(L"Failed to commit memory", GetLastError());
+        HandleErrorAndFailW(L"Failed to commit memory", GetLastError(), FALSE);
     }
     PrintMemoryStats("After MEM_COMMIT   ");
 
@@ -81,7 +58,7 @@ int main(void)
 
     if (!VirtualFree(lpvReservedArea, 0, MEM_RELEASE))
     {
-        HandleErrorAndFailW(L"Failed to release memory", GetLastError());
+        HandleErrorAndFailW(L"Failed to release memory", GetLastError(), FALSE);
     }
     PrintMemoryStats("After MEM_RELEASE  ");
 
