@@ -1,31 +1,30 @@
 #include <Windows.h>
-#include <errno.h>
 #include <process.h>
-#include <stdio.h>
 
 #include "ErrorHelper.h"
 
 UINT __stdcall RunThread(PVOID pParam)
 {
-    HANDLE pHEvent = (HANDLE)pParam;
-    UINT dwThreadExitCode = 0;
-    DWORD dwWaitResult = WaitForSingleObject(pHEvent, INFINITE);
+    HANDLE hWaitEvent = (HANDLE)pParam;
+    DWORD dwExitCode = 0;
+    DWORD dwWaitResult = WaitForSingleObject(hWaitEvent, INFINITE);
 
     if (dwWaitResult == WAIT_FAILED)
     {
         HandleErrorAndFailW(L"WaitForSingleObject failed", GetLastError(), FALSE);
     }
-    printf("Worker thread signal turned on!\n");
-    Sleep(1000);
-    printf("Worker thread exit!\n");
 
-    return dwThreadExitCode;
+    wprintf(L"Worker thread signal turned on!\n");
+    Sleep(1000);
+    wprintf(L"Worker thread exit!\n");
+
+    return (UINT)dwExitCode;
 }
 
 int main(void)
 {
     HANDLE hThread = NULL;
-    DWORD dwThreadExitCode;
+    DWORD dwThreadExitCode = 0;
 
     HANDLE hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
     if (hEvent == NULL)
@@ -33,15 +32,18 @@ int main(void)
         HandleErrorAndFailW(L"CreateEventW failed", GetLastError(), FALSE);
     }
 
-    printf("Creating Thread...\n");
+    wprintf(L"Creating Thread...\n");
     hThread = (HANDLE)_beginthreadex(NULL, 0, RunThread, hEvent, 0, NULL);
     if (hThread == NULL)
     {
-        HandleErrorAndFailW(L"_beginthreadex failed", errno, TRUE);
+        ULONG ulDosError = 0;
+        _get_doserrno(&ulDosError);
+        HandleErrorAndFailW(L"_beginthreadex failed", (DWORD)ulDosError, TRUE);
     }
+
     Sleep(1000);
 
-    printf("Sending Event...\n");
+    wprintf(L"Sending Event...\n");
     if (!SetEvent(hEvent))
     {
         HandleErrorAndFailW(L"SetEvent failed", GetLastError(), FALSE);
@@ -62,13 +64,15 @@ int main(void)
     {
         HandleErrorAndFailW(L"CloseHandle failed", GetLastError(), FALSE);
     }
-    hThread = INVALID_HANDLE_VALUE;
+    hThread = NULL;
 
     if (!CloseHandle(hEvent))
     {
         HandleErrorAndFailW(L"CloseHandle failed", GetLastError(), FALSE);
     }
-    hEvent = INVALID_HANDLE_VALUE;
+    hEvent = NULL;
+
+    wprintf(L"Main Thread finished!\n");
 
     return 0;
 }

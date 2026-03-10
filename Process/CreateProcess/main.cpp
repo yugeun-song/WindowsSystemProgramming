@@ -1,60 +1,75 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <windows.h>
-#include <intrin.h>
-#include <stdio.h>
-#include <wchar.h>
 
 #include "ErrorHelper.h"
 
 void RunChildRoutine(void)
 {
-    wprintf(L"[Child] Process terminating in 10s. PID: %lu\n", GetCurrentProcessId());
+    wprintf(L"[Child] Terminating in 10 seconds... (PID: %lu)\n", GetCurrentProcessId());
     Sleep(10000);
 }
 
 int main(void)
 {
-    wchar_t* cmdLine = GetCommandLineW();
-    if (cmdLine != NULL && wcsstr(cmdLine, L"--child-mode") != NULL)
+    LPWSTR pwszCmdLine = GetCommandLineW();
+    if (pwszCmdLine != NULL && wcsstr(pwszCmdLine, L"--child-mode") != NULL)
     {
+        DWORD dwProcessReturnCode = 143;
         RunChildRoutine();
-        return 0;
+        return (int)dwProcessReturnCode;
     }
 
-    wchar_t exePath[MAX_PATH];
-    DWORD dwRet = GetModuleFileNameW(NULL, exePath, MAX_PATH);
-    if (dwRet == 0 || dwRet == MAX_PATH)
+    WCHAR wszModulePath[MAX_PATH] = { 0, };
+    DWORD dwPathLen = GetModuleFileNameW(NULL, wszModulePath, ARRAYSIZE(wszModulePath));
+    if (dwPathLen == 0 || dwPathLen >= ARRAYSIZE(wszModulePath))
     {
-        HandleErrorAndFailW(L"Failed to get module file name", GetLastError(), FALSE);
+        HandleErrorAndFailW(L"GetModuleFileNameW failed", GetLastError(), FALSE);
+        return 1;
     }
 
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi = { 0 };
-    wchar_t newCmdLine[MAX_PATH * 2];
+    WCHAR wszNewCmdLine[MAX_PATH * 2] = { 0, };
 
-    if (swprintf_s(newCmdLine, ARRAYSIZE(newCmdLine), L"\"%s\" --child-mode", exePath) < 0)
+    if (_snwprintf(wszNewCmdLine, ARRAYSIZE(wszNewCmdLine), L"\"%s\" --child-mode", wszModulePath) < 0)
     {
-        printf("Failed to format command line string\n");
+        fwprintf(stderr, L"Command line buffer overflow\n");
         return 1;
     }
 
-    if (CreateProcessW(NULL, newCmdLine, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi))
+    if (!CreateProcessW(NULL, wszNewCmdLine, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi))
     {
-        wprintf(L"[Parent] Child spawned (PID: %lu). Detaching...\n", pi.dwProcessId);
-
-        if (!CloseHandle(pi.hThread))
-        {
-            HandleErrorAndFailW(L"Failed to close child thread handle", GetLastError(), FALSE);
-        }
-        if (!CloseHandle(pi.hProcess))
-        {
-            HandleErrorAndFailW(L"Failed to close child process handle", GetLastError(), FALSE);
-        }
-    }
-    else
-    {
-        HandleErrorAndFailW(L"Failed to create child process", GetLastError(), FALSE);
+        HandleErrorAndFailW(L"CreateProcessW failed", GetLastError(), FALSE);
+        return 1;
     }
 
-    wprintf(L"[Parent] Terminating... Child will exit in 10s.\n");
+    wprintf(L"[Parent] Child Process created\n");
+
+    if (WaitForSingleObject(pi.hProcess, INFINITE) == WAIT_FAILED)
+    {
+        HandleErrorAndFailW(L"WaitForSingleObject failed", GetLastError(), FALSE);
+    }
+
+    DWORD dwExitCode = 0;
+    if (!GetExitCodeProcess(pi.hProcess, &dwExitCode))
+    {
+        HandleErrorAndFailW(L"GetExitCodeProcess failed", GetLastError(), FALSE);
+    }
+
+    if (!CloseHandle(pi.hThread))
+    {
+        HandleErrorAndFailW(L"CloseHandle (hThread) failed", GetLastError(), FALSE);
+    }
+    pi.hThread = NULL;
+
+    if (!CloseHandle(pi.hProcess))
+    {
+        HandleErrorAndFailW(L"CloseHandle (hProcess) failed", GetLastError(), FALSE);
+    }
+    pi.hProcess = NULL;
+
+    wprintf(L"[Parent] Child (PID: %lu) exited with code: %lu\n", pi.dwProcessId, dwExitCode);
+
     return 0;
 }

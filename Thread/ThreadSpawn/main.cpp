@@ -1,117 +1,112 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <Windows.h> // Must be included before DbgHelp.h (Required for Win32 types)
-#include <DbgHelp.h>
 #include <process.h>
-#include <stdio.h>
 
 #include "ErrorHelper.h"
 
 #pragma comment(lib, "Dbghelp.lib")
 
-CRITICAL_SECTION gCriticalSection;
+CRITICAL_SECTION g_cs;
 
-void PrintStackTrace(LPCSTR szThreadLabel)
+void PrintStackTrace(LPCWSTR pwszThreadLabel)
 {
-    PVOID pStack[64] = { 0, };
+    PVOID pStack[64] = { 0 };
     HANDLE hProcess = GetCurrentProcess();
     USHORT usFrames = CaptureStackBackTrace(0, 64, pStack, NULL);
 
-    SYMBOL_INFO* pSymbol = (SYMBOL_INFO*)calloc(1, sizeof(SYMBOL_INFO) + 256);
-    if (pSymbol == NULL)
+    const SIZE_T cbSymbolInfo = sizeof(SYMBOL_INFO) + (MAX_SYM_NAME * sizeof(char));
+    SYMBOL_INFO* pSymbolInfo = (SYMBOL_INFO*)calloc(1, cbSymbolInfo);
+    if (pSymbolInfo == NULL)
     {
-        fwprintf(stderr, L"calloc failed for SYMBOL_INFO in PrintStackTrace\n");
+        fwprintf(stderr, L"calloc failed for SYMBOL_INFO\n");
         return;
     }
 
-    pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    pSymbol->MaxNameLen = 255;
+    pSymbolInfo->SizeOfStruct = sizeof(SYMBOL_INFO);
+    pSymbolInfo->MaxNameLen = MAX_SYM_NAME;
 
-    SIZE_T cbMaxOutput = 32768;
-    char* pszOutput = (char*)calloc(1, cbMaxOutput);
-    if (pszOutput == NULL)
+    const DWORD dwMaxOutput = 32768;
+    LPWSTR pwszOutput = (LPWSTR)calloc(dwMaxOutput, sizeof(WCHAR));
+    if (pwszOutput == NULL)
     {
-        fwprintf(stderr, L"calloc failed for Output Buffer in PrintStackTrace\n");
-        free(pSymbol);
+        fwprintf(stderr, L"calloc failed for Output Buffer\n");
+        free(pSymbolInfo);
+        pSymbolInfo = NULL;
         return;
     }
 
-    SIZE_T cbOffset = 0;
-    SIZE_T cbRemaining = cbMaxOutput;
-    SIZE_T cbWrittenCount = 0;
+    DWORD dwOffset = 0;
+    DWORD dwRemaining = dwMaxOutput;
+    int nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"\n--- Stack Trace: %s (TID: %lu) ---\n",
+                              pwszThreadLabel, GetCurrentThreadId());
 
-    cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "\n--- Stack Trace: %s (TID: %lu) ---\n",
-                              szThreadLabel, GetCurrentThreadId());
-    if (cbWrittenCount > 0 && cbWrittenCount < cbRemaining)
+    if (nWritten > 0 && nWritten < (int)dwRemaining)
     {
-        cbOffset += cbWrittenCount;
-        cbRemaining -= cbWrittenCount;
+        dwOffset += nWritten;
+        dwRemaining -= nWritten;
     }
 
-    EnterCriticalSection(&gCriticalSection);
+    EnterCriticalSection(&g_cs);
 
     for (USHORT i = 0; i < usFrames; ++i)
     {
-        if (pStack[i] == NULL || cbRemaining == 0)
+        if (pStack[i] == NULL || dwRemaining == 0)
         {
             continue;
         }
 
         DWORD64 dw64Displacement = 0;
-        if (SymFromAddr(hProcess, (DWORD64)pStack[i], &dw64Displacement, pSymbol))
+        if (SymFromAddr(hProcess, (DWORD64)pStack[i], &dw64Displacement, pSymbolInfo))
         {
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] %-30s (0x%llX)\n", i + 1,
-                                      pSymbol->Name, pSymbol->Address);
+            nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] %-30S (0x%llX)\n", i + 1,
+                                  pSymbolInfo->Name, pSymbolInfo->Address);
         }
         else
         {
-            DWORD dwError = GetLastError();
-            cbWrittenCount = snprintf(pszOutput + cbOffset, cbRemaining, "[#%02u] Unknown Symbol (0x%p) - Error: %lu\n",
-                                      i + 1, pStack[i], dwError);
+            nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] Unknown Symbol (0x%p) - Error: %lu\n",
+                                  i + 1, pStack[i], GetLastError());
         }
 
-        if (cbWrittenCount > 0 && cbWrittenCount < cbRemaining)
+        if (nWritten > 0 && nWritten < (int)dwRemaining)
         {
-            cbOffset += cbWrittenCount;
-            cbRemaining -= cbWrittenCount;
+            dwOffset += nWritten;
+            dwRemaining -= nWritten;
         }
         else
         {
-            cbRemaining = 0;
+            dwRemaining = 0;
         }
     }
 
-    LeaveCriticalSection(&gCriticalSection);
+    LeaveCriticalSection(&g_cs);
 
-    if (cbRemaining > 0)
-    {
-        snprintf(pszOutput + cbOffset, cbRemaining, "------------------------------------------------------------\n");
-    }
+    wprintf(L"%s", pwszOutput);
 
-    printf("%s", pszOutput);
+    free(pwszOutput);
+    pwszOutput = NULL;
 
-    free(pszOutput);
-    pszOutput = NULL;
-
-    free(pSymbol);
-    pSymbol = NULL;
+    free(pSymbolInfo);
+    pSymbolInfo = NULL;
 }
 
 DWORD WINAPI Win32Worker(LPVOID lpParam)
 {
-    DWORD dwThreadExitCode = 13;
-    PrintStackTrace("Win32Worker (CreateThread)");
-    return dwThreadExitCode;
+    DWORD dwExitCode = 13;
+    PrintStackTrace(L"Win32Worker (CreateThread)");
+    return dwExitCode;
 }
 
 UINT __stdcall RunThread(PVOID pParam)
 {
-    UINT dwThreadExitCode = 27;
-    PrintStackTrace("CrtWorker (_beginthreadex)");
-    return dwThreadExitCode;
+    DWORD dwExitCode = 27;
+    PrintStackTrace(L"CrtWorker (_beginthreadex)");
+    return (UINT)dwExitCode;
 }
 
 int main(void)
 {
-    InitializeCriticalSection(&gCriticalSection);
+    InitializeCriticalSection(&g_cs);
 
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME);
     if (!SymInitialize(GetCurrentProcess(), NULL, TRUE))
@@ -132,21 +127,19 @@ int main(void)
     hThreads[1] = (HANDLE)_beginthreadex(NULL, 0, RunThread, NULL, 0, NULL);
     if (hThreads[1] == NULL)
     {
-        ULONG nDosErrno = 0;
-        _get_doserrno(&nDosErrno);
-        HandleErrorAndFailW(L"_beginthreadex failed", (DWORD)nDosErrno, TRUE);
+        ULONG ulDosError = 0;
+        _get_doserrno(&ulDosError);
+        HandleErrorAndFailW(L"_beginthreadex failed", (DWORD)ulDosError, TRUE);
     }
 
-    for (SIZE_T i = 0; i < 2; ++i)
+    DWORD dwWaitResult = WaitForMultipleObjects(2, hThreads, TRUE, INFINITE);
+    if (dwWaitResult == WAIT_FAILED)
     {
-        DWORD dwWaitResult = WaitForSingleObject(hThreads[i], INFINITE);
+        HandleErrorAndFailW(L"WaitForMultipleObjects failed", GetLastError(), FALSE);
+    }
 
-        if (dwWaitResult == WAIT_FAILED)
-        {
-            fwprintf(stderr, L"Wait failed for: %ls\n", pwszThreadNames[i]);
-            HandleErrorAndFailW(L"WaitForSingleObject failed", GetLastError(), FALSE);
-        }
-
+    for (DWORD i = 0; i < 2; ++i)
+    {
         if (!GetExitCodeThread(hThreads[i], &dwExitCodes[i]))
         {
             fwprintf(stderr, L"Failed to get exit code for: %ls\n", pwszThreadNames[i]);
@@ -154,30 +147,30 @@ int main(void)
         }
     }
 
-    printf("\n"
-           "============================================\n"
-           "            Thread Execution Results        \n"
-           "============================================\n"
-           "    Win32 API Exit Code       : %-10lu\n"
-           "    CRT Wrapper Exit Code     : %-10lu\n"
-           "============================================\n",
-           dwExitCodes[0], dwExitCodes[1]);
+    wprintf(L"\n"
+            L"============================================\n"
+            L"            Thread Execution Results        \n"
+            L"============================================\n"
+            L"    Win32 API Exit Code       : %-10lu\n"
+            L"    CRT Wrapper Exit Code     : %-10lu\n"
+            L"============================================\n",
+            dwExitCodes[0], dwExitCodes[1]);
 
     if (!CloseHandle(hThreads[0]))
     {
         fwprintf(stderr, L"CloseHandle failed for Win32 thread: %lu\n", GetLastError());
     }
-    hThreads[0] = INVALID_HANDLE_VALUE;
+    hThreads[0] = NULL;
 
     if (!CloseHandle(hThreads[1]))
     {
         fwprintf(stderr, L"CloseHandle failed for CRT thread: %lu\n", GetLastError());
     }
-    hThreads[1] = INVALID_HANDLE_VALUE;
+    hThreads[1] = NULL;
 
     SymCleanup(GetCurrentProcess());
 
-    DeleteCriticalSection(&gCriticalSection);
+    DeleteCriticalSection(&g_cs);
 
     return 0;
 }

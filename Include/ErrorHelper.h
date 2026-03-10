@@ -1,19 +1,16 @@
 #pragma once
 
 #include <Windows.h> // Must be included before DbgHelp.h (Required for Win32 types)
-#include <DbgHelp.h>
-#include <errno.h>
 #include <stdio.h>
-#include <string.h>
 
 #pragma comment(lib, "Dbghelp.lib")
 
-[[noreturn]] inline void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode, BOOL bIsCrtError)
+void HandleErrorAndFailW(LPCWSTR pwszMessage, DWORD dwErrorCode, BOOL bIsCrtError)
 {
     if (bIsCrtError)
     {
-        wchar_t wszCrtMsg[256];
-        if (_wcserror_s(wszCrtMsg, 256, (int)dwErrorCode) == 0)
+        WCHAR wszCrtMsg[256] = { 0, };
+        if (_wcserror_s(wszCrtMsg, ARRAYSIZE(wszCrtMsg), (int)dwErrorCode) == 0)
         {
             fwprintf(stderr, L"%ls: %lu - %ls\n", pwszMessage, dwErrorCode, wszCrtMsg);
         }
@@ -43,12 +40,10 @@
 #if defined(_DEBUG)
     __debugbreak();
 #else
-    HANDLE hDumpFile =
-        CreateFileW(L"CrashDump.dmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hDumpFile = CreateFileW(L"CrashDump.dmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hDumpFile != INVALID_HANDLE_VALUE)
     {
-        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpWithFullMemory, NULL, NULL,
-                          NULL);
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpNormal, NULL, NULL, NULL);
         CloseHandle(hDumpFile);
     }
 #endif
