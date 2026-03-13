@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <Windows.h> // Must be included before DbgHelp.h (Required for Win32 types)
+#include <DbgHelp.h>
 #include <process.h>
 
 #include "ErrorHelper.h"
