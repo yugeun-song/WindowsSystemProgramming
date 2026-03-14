@@ -36,7 +36,7 @@ UINT __stdcall RunReaderThread(PVOID pParam)
 
 int main(void)
 {
-    SYSTEM_INFO sysInfo = { 0 };
+    SYSTEM_INFO sysInfo = { 0, };
     GetSystemInfo(&sysInfo);
 
     DWORD dwWriterCount = 2;
@@ -96,19 +96,19 @@ int main(void)
 
     const ULONGLONG ullExpectedResult = (ULONGLONG)dwWriterCount * (ULONGLONG)g_dwWriteGoalCount;
     wprintf(L"\n--- Result ---\n"
-            L"Writer Threads:  %lu\n"
-            L"Reader Threads:  %lu\n"
-            L"Expected Result: %llu\n"
-            L"Actual Result:   %llu\n",
+            L"Writer Threads  : %lu\n"
+            L"Reader Threads  : %lu\n"
+            L"Expected Result : %llu\n"
+            L"Actual Result   : %llu\n",
             dwWriterCount, dwReaderCount, ullExpectedResult, g_ullSharedData);
 
     if (g_ullSharedData == ullExpectedResult)
     {
-        wprintf(L"Verification:    SUCCESS\n");
+        wprintf(L"Verification    : SUCCESS\n");
     }
     else
     {
-        wprintf(L"Verification:    FAILED\n");
+        wprintf(L"Verification    : FAILED\n");
     }
 
     free(hThreads);

@@ -12,7 +12,7 @@ CRITICAL_SECTION g_cs;
 
 void PrintStackTrace(LPCWSTR pwszThreadLabel)
 {
-    PVOID pStack[64] = { 0 };
+    PVOID pStack[64] = { 0, };
     HANDLE hProcess = GetCurrentProcess();
     USHORT usFrames = CaptureStackBackTrace(0, 64, pStack, NULL);
 
@@ -39,13 +39,13 @@ void PrintStackTrace(LPCWSTR pwszThreadLabel)
 
     DWORD dwOffset = 0;
     DWORD dwRemaining = dwMaxOutput;
-    int nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"\n--- Stack Trace: %s (TID: %lu) ---\n",
-                              pwszThreadLabel, GetCurrentThreadId());
+    DWORD dwWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"\n--- Stack Trace: %s (TID: %lu) ---\n",
+                                 pwszThreadLabel, GetCurrentThreadId());
 
-    if (nWritten > 0 && nWritten < (int)dwRemaining)
+    if (dwWritten > 0 && dwWritten < dwRemaining)
     {
-        dwOffset += nWritten;
-        dwRemaining -= nWritten;
+        dwOffset += dwWritten;
+        dwRemaining -= dwWritten;
     }
 
     EnterCriticalSection(&g_cs);
@@ -60,19 +60,19 @@ void PrintStackTrace(LPCWSTR pwszThreadLabel)
         DWORD64 dw64Displacement = 0;
         if (SymFromAddr(hProcess, (DWORD64)pStack[i], &dw64Displacement, pSymbolInfo))
         {
-            nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] %-30S (0x%llX)\n", i + 1,
+            dwWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] %-30S (0x%llX)\n", i + 1,
                                   pSymbolInfo->Name, pSymbolInfo->Address);
         }
         else
         {
-            nWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] Unknown Symbol (0x%p) - Error: %lu\n",
+            dwWritten = _snwprintf(pwszOutput + dwOffset, dwRemaining, L"[#%02u] Unknown Symbol (0x%p) - Error: %lu\n",
                                   i + 1, pStack[i], GetLastError());
         }
 
-        if (nWritten > 0 && nWritten < (int)dwRemaining)
+        if (dwWritten > 0 && dwWritten < (int)dwRemaining)
         {
-            dwOffset += nWritten;
-            dwRemaining -= nWritten;
+            dwOffset += dwWritten;
+            dwRemaining -= dwWritten;
         }
         else
         {

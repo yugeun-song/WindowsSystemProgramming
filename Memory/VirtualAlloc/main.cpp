@@ -22,7 +22,7 @@ int main(void)
     constexpr SIZE_T cbReserveSize = 1024ULL * 1024 * 1024;
     constexpr SIZE_T cbActualAvailableSize = cbReserveSize / 2;
 
-    SYSTEM_INFO si = {0};
+    SYSTEM_INFO si = { 0, };
     GetSystemInfo(&si);
     const DWORD dwPageSize = si.dwPageSize;
 

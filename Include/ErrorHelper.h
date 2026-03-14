@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h> // Must be included before DbgHelp.h (Required for Win32 types)
+#include <DbgHelp.h>
 #include <stdio.h>
 
 #pragma comment(lib, "Dbghelp.lib")

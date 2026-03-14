@@ -20,7 +20,7 @@ UINT __stdcall RunThread(PVOID pParam)
 
 int main(void)
 {
-    SYSTEM_INFO sysInfo = {0};
+    SYSTEM_INFO sysInfo = { 0, };
     GetSystemInfo(&sysInfo);
     DWORD dwThreadCount = sysInfo.dwNumberOfProcessors;
 
@@ -82,18 +82,18 @@ int main(void)
     }
 
     const ULONGLONG ullExpectedResult = (ULONGLONG)dwThreadCount * (ULONGLONG)g_dwGoalCountPerThread;
-    wprintf(L"Thread Count:    %lu\n"
-            L"Expected Result: %llu\n"
-            L"Actual Result:   %llu\n",
+    wprintf(L"Thread Count    : %lu\n"
+            L"Expected Result : %llu\n"
+            L"Actual Result   : %llu\n",
             dwThreadCount, ullExpectedResult, g_ullSharedData);
 
     if (g_ullSharedData == ullExpectedResult)
     {
-        wprintf(L"Verification:    SUCCESS\n");
+        wprintf(L"Verification    : SUCCESS\n");
     }
     else
     {
-        wprintf(L"Verification:    FAILED\n");
+        wprintf(L"Verification    : FAILED\n");
     }
 
     free(hThreads);

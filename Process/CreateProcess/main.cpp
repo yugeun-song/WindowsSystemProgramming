@@ -17,7 +17,7 @@ int main(void)
     {
         DWORD dwProcessReturnCode = 143;
         RunChildRoutine();
-        return (int)dwProcessReturnCode;
+        return dwProcessReturnCode;
     }
 
     WCHAR wszModulePath[MAX_PATH] = { 0, };
@@ -29,7 +29,7 @@ int main(void)
     }
 
     STARTUPINFOW si = { sizeof(si) };
-    PROCESS_INFORMATION pi = { 0 };
+    PROCESS_INFORMATION pi = { 0, };
     WCHAR wszNewCmdLine[MAX_PATH * 2] = { 0, };
 
     if (_snwprintf(wszNewCmdLine, ARRAYSIZE(wszNewCmdLine), L"\"%s\" --child-mode", wszModulePath) < 0)
