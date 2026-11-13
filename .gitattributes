@@ -1,0 +1,2 @@
+# CRLF in every checkout, whatever core.autocrlf says; binaries are detected and left alone.
+* text=auto eol=crlf
