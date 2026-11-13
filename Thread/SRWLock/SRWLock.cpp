@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <process.h>
+#include <stdio.h>
 
 #include "ErrorHelper.h"
 
