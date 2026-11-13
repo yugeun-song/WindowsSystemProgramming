@@ -1,4 +1,6 @@
 ---
+# Braces on their own line around every body, a single statement too. <Windows.h> stays before the headers
+# that use its types, so includes are not sorted.
 Language:        Cpp
 BasedOnStyle:    Microsoft
 AccessModifierOffset: -4
@@ -11,9 +13,11 @@ AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+AllowShortEnumsOnASingleLine: false
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
@@ -36,6 +40,7 @@ BreakBeforeBraces: Allman
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
+Cpp11BracedListStyle: false
 ColumnLimit:     120
 ContinuationIndentWidth: 4
 DerivePointerAlignment: false
@@ -45,6 +50,7 @@ ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
 IndentCaseLabels: true
 IndentWidth:     4
 IndentWrappedFunctionNames: false
+InsertBraces:    true
 KeepEmptyLinesAtTheStartOfBlocks: true
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
@@ -58,7 +64,7 @@ RawStringFormats:
       - cxx
     BasedOnStyle:    llvm
 ReflowComments:  true
-SortIncludes:    true
+SortIncludes:    Never
 Standard:        Latest
 TabWidth:        4
 UseTab:          Never
